@@ -22,7 +22,18 @@ def _truncate(x):
     return x
 
 
-def _mat_spect_approx(A, level, sorteigs=True, reverse=False, absolute=True):
+def _resample(x, m):
+    import numpy as np
+
+    n = len(x)
+    step = float(n)/m
+    steps = [val*step for val in range(0, m)]
+    res = np.interp(steps, range(n), x)
+    return res
+
+
+def _mat_spect_approx(A, level, m=None, sorteigs=True, reverse=False,
+                      absolute=True):
     """ Returns the low-rank approximation of the given matrix A
 
     Parameters
@@ -30,6 +41,8 @@ def _mat_spect_approx(A, level, sorteigs=True, reverse=False, absolute=True):
     A : numpy matrix
     level : integer
         It represents the fixed rank for the output approximation matrix
+    m : positive integer
+        Dimension of the output square matrix. Defaults is the same as A.
     sorteigs : boolean
         Whether eigenvectors should be sorted according to their associated
         eigenvalues before removing the firsts of them
@@ -80,11 +93,22 @@ def _mat_spect_approx(A, level, sorteigs=True, reverse=False, absolute=True):
     for i in range(level, n):
         V[:, k[i]] = z
 
+    if m:
+        D = np.ravel(np.zeros((1, m)))
+        W = np.zeros((m, m))
+        for i in range(n):
+            D[k[i]] = d[k[i]]
+        d = D
+        for i in range(n):
+            W[:, k[i]] = _resample(np.ravel(V[:, k[i]]), m)
+        V = np.matrix(W)
+
     B = V*np.diag(d)*np.transpose(V)
     return B
 
 
-def spectral_graph_forge(G, alpha, transformation='identity', seed=None):
+def spectral_graph_forge(G, alpha, m=None, transformation='identity',
+                         seed=None):
     """ Spectral Graph Forge (SGF) generates a random simple graph resembling
         the global properties of the input one.
 
@@ -94,6 +118,9 @@ def spectral_graph_forge(G, alpha, transformation='identity', seed=None):
     alpha :  float
         Ratio representing the percentage of eigenvectors of G to consider,
         values in [0,1].
+    m : positive integer
+        number of nodes for the output graph. Default is the same as the input
+        one.
     transformation : string, optional
         Represents the intended matrix linear transformation, possible values
         are 'identity' and 'modularity'
@@ -171,7 +198,9 @@ def spectral_graph_forge(G, alpha, transformation='identity', seed=None):
     if (transformation == 'modularity'):
         B -= np.transpose(K) * K / float(sum(np.ravel(K)))
 
-    B = _mat_spect_approx(B, level, sorteigs=True, absolute=True)
+    B = _mat_spect_approx(B, level, m, sorteigs=True, absolute=True)
+    if m:
+        K = np.matrix(_resample(np.ravel(K), m))
 
     if (transformation == 'modularity'):
         B += np.transpose(K) * K / float(sum(np.ravel(K)))

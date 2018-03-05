@@ -46,6 +46,13 @@ def test_spectral_graph_forge(ntimes=100):
         assert_nodes_equal(G, H)
         assert_true(is_isomorphic(G, H))
 
+        # with all the eigenvectors and stretch to the input size, output graph
+        # is the same as the input
+        H = spectral_graph_forge(G, 1, m=len(G.nodes()),
+                                 transformation='modularity', seed=seed)
+        assert_nodes_equal(G, H)
+        assert_true(is_isomorphic(G, H))
+
         # invalid alpha input value, it is silently truncated in [0,1]
         H = spectral_graph_forge(G, -1, transformation='identity', seed=seed)
         assert_nodes_equal(G, H)
